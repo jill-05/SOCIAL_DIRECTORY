@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Directory</title>
+    <style>
+        :root {
+            --bg-gradient-start: #1d2b4a;
+            --bg-gradient-end: #0f172a;
+            --panel-bg: #1e293b;
+            --border-color: #334155;
+            --primary-text: #e2e8f0;
+            --secondary-text: #94a3b8;
+            --accent-gradient-start: #3b82f6;
+            --accent-gradient-end: #8b5cf6;
+            --score-color: #10b981;
+            --agent-bg: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-gradient-start);
+            background-image: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+            margin: 0;
+            padding: 1.5rem;
+            color: var(--primary-text);
+        }
+
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 2fr; grid-template-rows: auto 1fr; gap: 1.5rem; height: calc(100vh - 3rem); }
+        .panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2); display: flex; flex-direction: column; }
+        .header-panel { grid-column: 1 / -1; text-align: center; font-size: 1.5rem; font-weight: 600; color: white; background-image: linear-gradient(to right, var(--accent-gradient-start), var(--accent-gradient-end)); border: none; }
+        .search-panel { grid-column: 1 / 2; }
+        .results-panel { grid-column: 2 / 3; overflow-y: auto; }
+
+        h2 { margin-top: 0; font-size: 1.2rem; color: var(--primary-text); border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; }
+        textarea { width: 100%; flex-grow: 1; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.75rem; font-size: 1rem; resize: none; box-sizing: border-box; background-color: #0f172a; color: var(--primary-text); }
+        button { width: 100%; padding: 0.75rem; margin-top: 1rem; font-size: 1rem; font-weight: 600; color: white; background-image: linear-gradient(to right, var(--accent-gradient-start), var(--accent-gradient-end)); border: none; border-radius: 6px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+
+        .candidate-card { border-bottom: 1px solid var(--border-color); padding: 1rem 0.5rem; transition: background-color 0.2s; cursor: pointer; }
+        .candidate-card:hover { background-color: rgba(51, 65, 85, 0.5); }
+        .candidate-header { display: flex; justify-content: space-between; align-items: center; }
+        .candidate-name { font-size: 1.1rem; font-weight: 600; }
+        .candidate-score { font-size: 1.1rem; font-weight: bold; color: var(--score-color); }
+        .candidate-description { color: var(--secondary-text); margin-top: 0.5rem; }
+
+        /* --- Candidate Detail Modal Styles --- */
+        #candidate-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+        #candidate-modal-overlay.open { opacity: 1; visibility: visible; }
+        .modal-content { background: var(--panel-bg); padding: 2rem; border-radius: 12px; border: 1px solid var(--border-color); width: 90%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); position: relative; }
+        #modal-close-btn { position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--secondary-text); font-size: 2rem; cursor: pointer; line-height: 1; }
+        .modal-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem; }
+        #modal-name { font-size: 1.5rem; font-weight: 600; }
+        #modal-rate { text-align: right; }
+        .modal-section { margin-bottom: 1rem; }
+        .modal-section h4 { margin: 0 0 0.5rem 0; color: var(--secondary-text); font-weight: 500; }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .tag { background: var(--border-color); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.9rem; }
+
+        /* --- Floating Chat Widget Styles --- */
+        #chat-fab { position: fixed; bottom: 2rem; right: 2rem; width: 60px; height: 60px; background-image: linear-gradient(to right, var(--accent-gradient-start), var(--accent-gradient-end)); color: white; border: none; border-radius: 50%; font-size: 2rem; display: flex; justify-content: center; align-items: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: transform 0.2s; z-index: 1000; }
+        #chat-fab:hover { transform: scale(1.1); }
+        #chat-widget-container { position: fixed; bottom: 6.5rem; right: 2rem; width: 420px; height: 60vh; max-height: 700px; background: var(--panel-bg); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; opacity: 0; transform: translateY(20px); visibility: hidden; transition: opacity 0.3s, transform 0.3s, visibility 0.3s; z-index: 999; }
+        #chat-widget-container.open { opacity: 1; transform: translateY(0); visibility: visible; }
+        .chat-widget-header { background-image: linear-gradient(to right, var(--accent-gradient-start), var(--accent-gradient-end)); color: white; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .chat-widget-header h3 { margin: 0; font-size: 1rem; }
+        #close-chat-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0; line-height: 1; }
+        .chat-messages { flex-grow: 1; padding: 1rem; overflow-y: auto; }
+        .message { margin-bottom: 1rem; display: flex; max-width: 90%; flex-direction: column; }
+        .message-content { padding: 0.75rem 1rem; border-radius: 18px; line-height: 1.5; word-wrap: break-word; overflow-wrap: break-word; }
+        .agent-message { align-self: flex-start; }
+        .agent-message .message-content { background-color: var(--agent-bg); color: var(--primary-text); border-bottom-left-radius: 4px; }
+        .user-message { align-self: flex-end; margin-left: auto; }
+        .user-message .message-content { background-image: linear-gradient(to right, var(--accent-gradient-start), var(--accent-gradient-end)); color: white; border-bottom-right-radius: 4px; }
+        .chat-input { display: flex; padding: 1rem; border-top: 1px solid var(--border-color); }
+        #chatInput { background: #0f172a; border: 1px solid var(--border-color); border-radius: 18px; color: white; padding: 0.5rem 1rem; flex-grow: 1; margin-right: 0.5rem; }
+        #chatSendButton { width: 40px; height: 40px; font-size: 1.2rem; margin: 0; padding: 0; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-grid">
+        <div class="panel header-panel">AI TALENT DASHBOARD</div>
+        <div class="panel search-panel">
+            <h2>Search Box</h2>
+            <textarea id="jobDescription" placeholder="Paste the job description here..."></textarea>
+            <button id="searchButton">Search Candidates</button>
+        </div>
+        <div class="panel results-panel" id="resultsPanel">
+            <h2>Top 10 Candidates</h2>
+            <div id="resultsContent">
+                <p style="color: #6a737d;">Results will appear here...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="candidate-modal-overlay">
+        <div class="modal-content">
+            <button id="modal-close-btn">&times;</button>
+            <div class="modal-header">
+                <div>
+                    <h3 id="modal-name">Candidate Name</h3>
+                    <p id="modal-location" style="color: var(--secondary-text); margin: 0;">Location</p>
+                </div>
+                <div id="modal-rate">
+                    <p style="margin: 0; font-size: 1.2rem; font-weight: 600;">$0/hr</p>
+                    <p style="margin: 0; color: var(--secondary-text);">$0/month</p>
+                </div>
+            </div>
+            <div class="modal-section"><h4>Job Types</h4><div id="modal-job-types" class="tag-container"></div></div>
+            <div class="modal-section"><h4>Skills</h4><div id="modal-skills" class="tag-container"></div></div>
+            <div class="modal-section"><h4>Platforms</h4><div id="modal-platforms" class="tag-container"></div></div>
+        </div>
+    </div>
+
+    <button id="chat-fab">🤖</button>
+
+    <div id="chat-widget-container">
+        <div class="chat-widget-header">
+            <h3>AI Assistant</h3>
+            <button id="close-chat-btn">&times;</button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="Ask me anything...">
+            <button id="chatSendButton">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // ### --- All JavaScript Logic --- ###
+
+        // --- Global variable to store candidate data ---
+        let topCandidatesData = [];
+
+        // --- Candidate Search Logic ---
+        const searchButton = document.getElementById('searchButton');
+        const jobDescription = document.getElementById('jobDescription');
+        const resultsContent = document.getElementById('resultsContent');
+
+        searchButton.addEventListener('click', async () => {
+            const description = jobDescription.value;
+            if (!description.trim()) { alert('Please enter a job description.'); return; }
+            searchButton.disabled = true; searchButton.textContent = 'Searching...';
+            resultsContent.innerHTML = '<p>Searching for the best candidates...</p>';
+            try {
+                const response = await fetch('/api/find_matches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ job_description: description }) });
+                if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || `HTTP error! status: ${response.status}`); }
+                topCandidatesData = await response.json();
+                displayResults(topCandidatesData);
+            } catch (error) { console.error('Error:', error); resultsContent.innerHTML = `<p style="color: #ff5555;">An error occurred: ${error.message}</p>`; }
+            finally { searchButton.disabled = false; searchButton.textContent = 'Search Candidates'; }
+        });
+
+        function displayResults(candidates) {
+            resultsContent.innerHTML = '';
+            if (candidates.length === 0) { resultsContent.innerHTML = '<p>No suitable candidates found.</p>'; return; }
+            candidates.forEach((candidate, index) => {
+                const score = (candidate.match_score * 100).toFixed(1);
+                const card = document.createElement('div');
+                card.className = 'candidate-card';
+                card.setAttribute('onclick', `showCandidateDetails(${index})`);
+                card.innerHTML = `
+                    <div class="candidate-header">
+                        <div class="candidate-name">${candidate.Name}</div>
+                        <div class="candidate-score">${score}% Match</div>
+                    </div>
+                    <div class="candidate-description">${candidate['Profile Description']}</div>`;
+                resultsContent.appendChild(card);
+            });
+        }
+
+        // --- Candidate Modal Logic ---
+        const modalOverlay = document.getElementById('candidate-modal-overlay');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        function showCandidateDetails(index) {
+            const candidate = topCandidatesData[index];
+            if (!candidate) return;
+            document.getElementById('modal-name').textContent = candidate.Name;
+            document.getElementById('modal-location').textContent = candidate.Country;
+            document.getElementById('modal-rate').innerHTML = `
+                <p style="margin: 0; font-size: 1.2rem; font-weight: 600;">$${candidate['Hourly Rate'] || 0}/hr</p>
+                <p style="margin: 0; color: var(--secondary-text);">$${candidate['Monthly Rate'] || 0}/month</p>`;
+
+            const createTags = (containerId, items) => {
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+                if (items && items.length > 0) {
+                    items.forEach(item => {
+                        const tag = document.createElement('div');
+                        tag.className = 'tag';
+                        tag.textContent = item;
+                        container.appendChild(tag);
+                    });
+                } else {
+                    container.innerHTML = '<span style="color: var(--secondary-text);">Not specified</span>';
+                }
+            };
+
+            createTags('modal-job-types', candidate.JobTypes_list);
+            createTags('modal-skills', candidate.Skills_list);
+            createTags('modal-platforms', candidate.Platforms_list);
+            modalOverlay.classList.add('open');
+        }
+
+        function closeModal() {
+            modalOverlay.classList.remove('open');
+        }
+
+        modalCloseBtn.addEventListener('click', closeModal);
+        modalOverlay.addEventListener('click', (event) => {
+            if (event.target === modalOverlay) { closeModal(); }
+        });
+
+        // --- Chat Widget Logic ---
+        const chatFab = document.getElementById('chat-fab');
+        const chatWidgetContainer = document.getElementById('chat-widget-container');
+        const closeChatButton = document.getElementById('close-chat-btn');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const chatSendButton = document.getElementById('chatSendButton');
+
+        chatFab.addEventListener('click', () => chatWidgetContainer.classList.toggle('open'));
+        closeChatButton.addEventListener('click', () => chatWidgetContainer.classList.remove('open'));
+
+        function addChatMessage(sender, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = text;
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function handleChatSend() {
+            const message = chatInput.value;
+            if (!message.trim()) return;
+            addChatMessage('user', message);
+            chatInput.value = '';
+            chatSendButton.disabled = true;
+
+            try {
+                const response = await fetch('/api/ai_chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                if (!response.ok) { throw new Error('Server error'); }
+                const data = await response.json();
+                addChatMessage('agent', data.reply);
+            } catch (error) {
+                console.error('Chat Error:', error);
+                addChatMessage('agent', "Sorry, I couldn't connect.");
+            } finally {
+                chatSendButton.disabled = false;
+                chatInput.focus();
+            }
+        }
+
+        chatSendButton.addEventListener('click', handleChatSend);
+        chatInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                handleChatSend();
+            }
+        });
+
+        window.onload = () => {
+            addChatMessage('agent', "Hello! I'm Eva. Click my icon if you have any questions!");
+        };
+    </script>
+</body>
+</html>

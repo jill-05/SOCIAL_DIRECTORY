@@ -1,0 +1,11 @@
+pandas
+sentence-transformers
+langdetect
+torch
+scikit-learn
+tqdm
+openai
+google-generativeai
+python-dotenv
+Flask
+waitress
