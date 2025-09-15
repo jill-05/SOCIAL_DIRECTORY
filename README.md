@@ -2,8 +2,6 @@
 
 An intelligent web dashboard that uses Large Language Models (OpenAI and Google Gemini) to parse job descriptions and rank talent profiles from a CSV file. The application features a modern, interactive dark-mode UI with a clickable results panel and an integrated AI assistant.
 
-![AI Talent Dashboard Screenshot](<REPLACE_WITH_YOUR_SCREENSHOT.png>)
-
 ---
 
 ## ✨ Key Features
